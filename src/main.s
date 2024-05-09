@@ -132,11 +132,9 @@ _printCentroids_ret:
 calculateCentroids:
     # t0 <- x_tot; t1 <- y_tot; t2 <- points/centroids; t3 <- index; t4 <- limit; t5 <- calcptr; t6 <- tmp
     
-    # reset total x and y
     mv t0, x0 # x_tot = 0
     mv t1, x0 # y_tot = 0
 
-    # init ptr, index and limit
     la t2, points
     mv t3, x0 # index = 0
     la t4, n_points
