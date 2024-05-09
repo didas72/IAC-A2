@@ -130,37 +130,35 @@ _printCentroids_ret:
 #;funcdecl calculateCentroids autosave noinline leaf ? ?
 # void calculateCentroids();
 calculateCentroids:
-    # TODO: Change tX to sX where apropriate
-    # TODO: C comments
-    # t0 <- x_tot; t1 <- y_tot; t2 <- ptr; t3 <- index; t4 <- limit; t5 <- calcptr; t6 <- tmp
+    # t0 <- x_tot; t1 <- y_tot; t2 <- points/centroids; t3 <- index; t4 <- limit; t5 <- calcptr; t6 <- tmp
     
     # reset total x and y
-    mv t0, x0
-    mv t1, x0
+    mv t0, x0 # x_tot = 0
+    mv t1, x0 # y_tot = 0
 
     # init ptr, index and limit
     la t2, points
-    mv t3, x0
+    mv t3, x0 # index = 0
     la t4, n_points
     lw t4, 0(t4)
     slli t4, t4, 3 # limit *= sizeof(int) * 2
 _calculateCentroids_total_loop:
-    add t5, t2, t3 # calculate pointer
-    lw t6, 0(t5) # load x
-    add t0, t0, t6
-    lw t6, 4(t5) # load y
-    add t1, t1, t6
-    addi t3, t3, 8 # advance index
+    add t5, t2, t3 # calcptr = $points[index]
+    lw t6, 0(t5) # tmp = *calcptr
+    add t0, t0, t6 # x_tot += tmp
+    lw t6, 4(t5) # tmp = *(calcptr + 4)
+    add t1, t1, t6 # y_tot += tmp
+    addi t3, t3, 8 # index += 4
     bne t3, t4, _calculateCentroids_total_loop # loop
 
 _calculateCentroids_divide:
-    srli t4, t4, 3 # npoints back to count
-    div t0, t0, t4 # avg x
-    div t1, t1, t4 # avg y
+    srli t4, t4, 3 # limit /= sizeof(int) * 2 (back to n_points)
+    div t0, t0, t4 # x_tot /= limit
+    div t1, t1, t4 # y_tot /= limit
     la t2, centroids
     # TODO: (2nd delivery) Make stores depend on k instead of constant [0]
-    sw t0, 0(t2) # store avg x
-    sw t1, 4(t2) # store avg y
+    sw t0, 0(t2) # *(centroids + 4) = x_tot
+    sw t1, 4(t2) # *(centroids + 4) = y_tot
 
 _calculateCentroids_ret:
     ret
