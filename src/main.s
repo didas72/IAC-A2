@@ -47,7 +47,7 @@ entry:
 # ===Requested functions===
 # =========================
 
-#;funcdecl cleanScreen autosave noinline leaf ? ?
+#;funcdecl cleanScreen autosave noinline autoleaf ? ?
 # void cleanScreen();
 cleanScreen:
     # t0 <- ptr; t1 <- index; t2 <- calcptr; t3 <- limit
@@ -66,7 +66,7 @@ _cleanScreen_ret:
 #;endfunc
 
 
-#;funcdecl printClusters autosave noinline noleaf ? ?
+#;funcdecl printClusters autosave noinline autoleaf ? ?
 # void printClusters();
 # Implemented for 2nd delivery already
 printClusters:
@@ -99,7 +99,7 @@ _printClusters_ret:
 #;endfunc
 
 
-#;funcdecl printCentroids autosave noinline noleaf ? ?
+#;funcdecl printCentroids autosave noinline autoleaf ? ?
 # void printCentroids();
 printCentroids:
     # s0 <- centroids; s1 <- index; s2 <- limit; s3 <- colors
@@ -127,7 +127,7 @@ _printCentroids_ret:
 #;endfunc
 
 
-#;funcdecl calculateCentroids autosave noinline leaf ? ?
+#;funcdecl calculateCentroids autosave noinline autoleaf ? ?
 # void calculateCentroids();
 calculateCentroids:
     # t0 <- x_tot; t1 <- y_tot; t2 <- points/centroids; t3 <- index; t4 <- limit; t5 <- calcptr; t6 <- tmp
@@ -163,7 +163,7 @@ _calculateCentroids_ret:
 #;endfunc
 
 
-#;funcdecl mainSingleCluster autosave noinline noleaf ? ?
+#;funcdecl mainSingleCluster autosave noinline autoleaf ? ?
 # void mainSingleCluster();
 mainSingleCluster:
     li t0, 1
