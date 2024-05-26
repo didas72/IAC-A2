@@ -1,6 +1,6 @@
-#;sect text
+;sect text
 
-#;funcdecl set_pixel autosave noinline leaf ? ?
+;funcdecl set_pixel 3 noinline
 # void set_pixel(const word x, const word y, const word color);
 # New implementation of set_pixel, slightly faster
 # Takes for granted that the matrix will always be 32x32
@@ -21,4 +21,4 @@ set_pixel:
 	sw a2, 0(t0) # store color
 _set_pixel_ret:
 	ret
-#;endfunc
+;endfunc

@@ -1,3 +1,4 @@
+;sect header
 #
 # IAC 2023/2024 k-means
 # 
@@ -13,8 +14,10 @@
 # In all C translation comments, pointers are assumed to be char* or equivalent,
 # pointer scaling is done by hand and ignored in the comments
 
+;sectord header data text
+
+;sect data
 .data
-#;sect data
 
 # Test input
 n_points:
@@ -35,11 +38,11 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
 .equ         white      0xffffff
 
  
+;sect text
 .text
-#;sect text
 
 entry:
-    #;funccall mainSingleCluster 0
+    ;funccall mainSingleCluster
     
     li a7, 10
     ecall
@@ -49,7 +52,7 @@ entry:
 # ===Requested functions===
 # =========================
 
-#;funcdecl cleanScreen autosave noinline autoleaf ? ?
+;funcdecl cleanScreen 0 noinline
 # void cleanScreen();
 cleanScreen:
     # t0 <- ptr; t1 <- index; t2 <- calcptr; t3 <- limit; t4 <- white
@@ -66,10 +69,10 @@ _cleanScreen_loop:
 
 _cleanScreen_ret:
     ret
-#;endfunc
+;endfunc
 
 
-#;funcdecl printClusters autosave noinline autoleaf ? ?
+;funcdecl printClusters 0 noinline
 # void printClusters();
 # Implemented for 2nd delivery already
 printClusters:
@@ -95,16 +98,16 @@ _printClusters_loop:
     slli t1, t1, 2 # clust_idx <<= 2 (clust_idx *= sizeof(word) to calculate offset)
     add t0, s3, t1 # calcptr = &colors[clust_idx]
     lw a2, 0(t0) # set_pixel.color = *calcptr
-    #;funccall set_pixel 0
+    ;funccall set_pixel a0 a1 a2
     addi s1, s1, 4 # index += sizeof(word)
     bne s1, s2, _printClusters_loop
 
 _printClusters_ret:
     ret
-#;endfunc
+;endfunc
 
 
-#;funcdecl printCentroids autosave noinline autoleaf ? ?
+;funcdecl printCentroids 0 noinline
 # void printCentroids();
 printCentroids:
     # s0 <- centroids; s1 <- index; s2 <- limit
@@ -123,16 +126,16 @@ _printCentroids_loop:
     lw a0, 0(t0) # sex_pixel.x = *calcptr
     lw a1, 4(t0) # set_pixel.y = *(calcptr + 4)
     # set_pixel.color is already set
-    #;funccall set_pixel 0
+    ;funccall set_pixel a0 a1 a2
     addi s1, s1, 4 # index += 4
     bne s1, s2, _printCentroids_loop # while(index < limit)
 
 _printCentroids_ret:
     ret
-#;endfunc
+;endfunc
 
 
-#;funcdecl calculateCentroids autosave noinline autoleaf ? ?
+;funcdecl calculateCentroids 0 noinline 
 # void calculateCentroids();
 calculateCentroids:
     # t0 <- x_tot; t1 <- y_tot; t2 <- points/centroids; t3 <- index; t4 <- limit; t5 <- calcptr; t6 <- tmp
@@ -166,10 +169,10 @@ _calculateCentroids_divide:
 
 _calculateCentroids_ret:
     ret
-#;endfunc
+;endfunc
 
 
-#;funcdecl mainSingleCluster autosave noinline autoleaf ? ?
+;funcdecl mainSingleCluster 0 noinline
 # void mainSingleCluster();
 mainSingleCluster:
     li t0, 1 # set k to 1
@@ -177,17 +180,17 @@ mainSingleCluster:
     sw t0, 0(t1)
 
     # Call cleanScreen
-    #;funccall cleanScreen 0
+    ;funccall cleanScreen
     # Call printClusters
-    #;funccall printClusters 0
+    ;funccall printClusters
     # Call calculcateCentroids
-    #;funccall calculateCentroids 0
+    ;funccall calculateCentroids
     # Call printCentroids
-    #;funccall printCentroids 0
+    ;funccall printCentroids
 
 _mainSingleCluster_ret:
     ret
-#;endfunc
+;endfunc
 
 # ===Includes===
-#;include draw.s
+;include draw.s
