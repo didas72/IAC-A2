@@ -12,7 +12,7 @@ set_pixel:
 	# off = sizeof(word) * (x + (height - y) * width)
 	# t0 <- ptr; t1 <- offset
 	la t0, LED_MATRIX_0_BASE # Load base pointer
-	li t1, 32 # offset = width
+	li t1, 31 # offset = height - 1
 	sub t1, t1, a1 # offset = height - y
 	slli t1, t1, 5 # offset = (height - y) * width
 	add t1, t1, a0 # offset = x + (height - y) * width
