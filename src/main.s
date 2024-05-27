@@ -15,6 +15,7 @@
 # pointer scaling is done by hand and ignored in the comments
 
 ;sectord header data text
+;poison jal jalr
 
 ;sect data
 .data
@@ -25,9 +26,9 @@ n_points:
 points:
     .word 16, 1, 17, 2, 18, 6, 20, 3, 21, 1, 17, 4, 21, 7, 16, 4, 21, 6, 19, 6, 4, 24, 6, 24, 8, 23, 6, 26, 6, 26, 6, 23, 8, 25, 7, 26, 7, 20, 4, 21, 4, 10, 2, 10, 3, 11, 2, 12, 4, 13, 4, 9, 4, 9, 3, 8, 0, 10, 4, 10
 centroids:
-    .word 0,0
+    .word 0,0, 0,0, 0,0
 k:
-    .word 1
+    .word 3
 clusters:
     .zero 120 # 30*4
 
@@ -42,15 +43,15 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
 .text
 
 entry:
-    ;funccall mainSingleCluster
+    ;funccall mainKMeans
     
     li a7, 10
     ecall
 
 
-# =========================
-# ===Requested functions===
-# =========================
+# ========================================
+# ===Requested functions (1st delivery)===
+# ========================================
 
 ;funcdecl cleanScreen 0 noinline
 # void cleanScreen();
@@ -71,9 +72,8 @@ _cleanScreen_ret:
     ret
 ;endfunc
 
-
 ;funcdecl printClusters 0 noinline
-# void printClusters();
+# void printClusters(destroy, destroy, destroy);
 # Implemented for 2nd delivery already
 printClusters:
     # s0 <- clusters; s1 <- index; s2 <- limit; s3 <- colors; s4 <- points
@@ -106,9 +106,8 @@ _printClusters_ret:
     ret
 ;endfunc
 
-
 ;funcdecl printCentroids 0 noinline
-# void printCentroids();
+# void printCentroids(destroy, destroy, destroy);
 printCentroids:
     # s0 <- centroids; s1 <- index; s2 <- limit
     # t0 <- calcptr
@@ -134,10 +133,9 @@ _printCentroids_ret:
     ret
 ;endfunc
 
-
-;funcdecl calculateCentroids 0 noinline 
-# void calculateCentroids();
-calculateCentroids:
+;funcdecl calculateCentroidsK1 0 noinline 
+# void calculateCentroidsK1();
+calculateCentroidsK1:
     # t0 <- x_tot; t1 <- y_tot; t2 <- points/centroids; t3 <- index; t4 <- limit; t5 <- calcptr; t6 <- tmp
     mv t0, x0 # x_tot = 0
     mv t1, x0 # y_tot = 0
@@ -147,7 +145,7 @@ calculateCentroids:
     lw t4, 0(t4)
     slli t4, t4, 3 # limit *= sizeof(word) * 2 (because sizeof(x) + sizeof(y))
     
-_calculateCentroids_total_loop:
+_calculateCentroidsK1_total_loop:
     # Accumulate total x and y values
     add t5, t2, t3 # calcptr = $points[index]
     lw t6, 0(t5) # tmp = *calcptr
@@ -157,40 +155,125 @@ _calculateCentroids_total_loop:
     addi t3, t3, 8 # index += 4
     bne t3, t4, _calculateCentroids_total_loop # while (index < limit)
 
-_calculateCentroids_divide:
+_calculateCentroidsK1_divide:
     # Divide by count to get floor(average) and store it
     srli t4, t4, 3 # limit /= sizeof(int) * 2 (back to n_points)
     div t0, t0, t4 # x_tot /= limit
     div t1, t1, t4 # y_tot /= limit
+_calculateCentroidsK1_store:
     la t2, centroids
     # TODO: (2nd delivery) Make stores depend on k instead of constant [0]
     sw t0, 0(t2) # *centroids = x_tot
     sw t1, 4(t2) # *(centroids + 4) = y_tot
 
+_calculateCentroidsK1_ret:
+    ret
+;endfunc
+
+;funcdecl calculateCentroids 0 noinline
+calculateCentroids:
 _calculateCentroids_ret:
     ret
 ;endfunc
 
+# ========================================
+# ===Requested functions (2nd delivery)===
+# ========================================
 
-;funcdecl mainSingleCluster 0 noinline
-# void mainSingleCluster();
-mainSingleCluster:
-    li t0, 1 # set k to 1
-    la t1, k
-    sw t0, 0(t1)
+;funcdecl initializeCentroids 0 noinline
+# void initializeCentroids(destroy);
+initializeCentroids:
+    # s0 <- cur_idx; s1 <- limit
+    # t0 <- calcptr
+    mv s0, x0
+    la s1, k
+    lw s1, 0(s1)
 
-    # Call cleanScreen
-    ;funccall cleanScreen
-    # Call printClusters
-    ;funccall printClusters
-    # Call calculcateCentroids
-    ;funccall calculateCentroids
-    # Call printCentroids
-    ;funccall printCentroids
+_initializeCentroids_iter:
+    ;funccall rng_step
+    la t0, centroids
+    add t0, t0, s0
+    sw a0, 0(t0)
+    addi s0, s0, 4
+    bne s0, s1, _initializeCentroids_iter
 
-_mainSingleCluster_ret:
+_initializeCentroids_ret:
     ret
 ;endfunc
 
+;funcdecl manhattanDistance 4 noinline
+# word manhattanDistance(word x1, word y1, word x2, word y2);
+manhattanDistance:
+    # t0 <- axis_tmp
+    sub t0, a2, a0 # axis_tmp = x2 - x1
+    blt t0, x0, _manhattanDistance_x_positive
+    neg t0, t0 # axis_tmp *= -1
+_manhattanDistance_x_positive:
+    mv a0, t0
+
+    sub t0, a3, a1 # axis_tmp = y2 - y1
+    blt t0, x0, _manhattanDistance_y_positive
+    neg t0, t0
+_manhattanDistance_y_positive:
+    add a0, a0, t0
+
+_manhattanDistance_ret:
+    ret
+;endfunc
+
+;funcdecl nearestCluster 2 noinline
+# word nearestCluster(word x, word y, destroy, destroy);
+nearestCluster:
+    # s0 <- x_backup; s1 <- nearest_idx; s2 <- nearest_dist; s3 <- cur_idx; s4 <- limit
+    # t0 <- tmp_x; t1 <- tmp_y; t2 <- calcptr
+    mv s0, a0 # Backup x
+    addi s2, x0, -1 # nearest_dist = 0xFFFFFFFF
+    mv s3, x0 # cur_idx = 0
+    la s4, k
+    lw s4, 0(s4)
+    slli s4, s4, 2 # limit = k * sizeof(word)
+
+_nearestCluster_iter:
+    la t2, centroids
+    add t2, t2, s3 # calcptr = &centroids[cur_idx]
+    lw t0, 0(t2) # tmp_x = *calcptr
+    lw t1, 4(t2) # tmp_x = *(calcptr + 4)
+    #REVIEW: function call
+    ;funccall manhattanDistance s0 a1 t0 t1
+    bgeu a0, s2 _nearestCluster_skip_closest
+    mv s2, a0
+    srli s1, s3, 2
+_nearestCluster_skip_closest:
+    addi s3, s3, 4
+    bne s3, s4, _nearestCluster_iter
+
+_nearestCluster_ret:
+    mv a0, s1
+    ret
+;endfunc
+
+;funcdecl mainKMeans 0 noinline
+mainKMeans:
+    ;funccall initializeCentroids
+
+mainKMeans_iter:
+    ;funccall cleanScreen
+    #TODO: Calculate clusters
+    ;funccall calculateCentroids
+    ;funccall printClusters
+    ;funccall printCentroids
+    #TODO: Loop until no change
+
+_mainKMeans_ret:
+    ret
+;endfunc
+
+# ========================
+# ===Auxiliar functions===
+# ========================
+
+
+
 # ===Includes===
 ;include draw.s
+;include rng.s
