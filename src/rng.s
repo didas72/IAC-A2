@@ -1,7 +1,7 @@
 ;sect data
 # PRNG
 rng_current:
-    .word 0xDEAD42069
+    .word 0x69DEAD69
 
 ;sect text
 

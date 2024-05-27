@@ -133,45 +133,67 @@ _printCentroids_ret:
     ret
 ;endfunc
 
-;funcdecl calculateCentroidsK1 0 noinline 
-# void calculateCentroidsK1();
-calculateCentroidsK1:
-    # t0 <- x_tot; t1 <- y_tot; t2 <- points/centroids; t3 <- index; t4 <- limit; t5 <- calcptr; t6 <- tmp
-    mv t0, x0 # x_tot = 0
-    mv t1, x0 # y_tot = 0
-    la t2, points
-    mv t3, x0 # index = 0
-    la t4, n_points
-    lw t4, 0(t4)
-    slli t4, t4, 3 # limit *= sizeof(word) * 2 (because sizeof(x) + sizeof(y))
-    
-_calculateCentroidsK1_total_loop:
-    # Accumulate total x and y values
-    add t5, t2, t3 # calcptr = $points[index]
-    lw t6, 0(t5) # tmp = *calcptr
-    add t0, t0, t6 # x_tot += tmp
-    lw t6, 4(t5) # tmp = *(calcptr + 4)
-    add t1, t1, t6 # y_tot += tmp
-    addi t3, t3, 8 # index += 4
-    bne t3, t4, _calculateCentroids_total_loop # while (index < limit)
-
-_calculateCentroidsK1_divide:
-    # Divide by count to get floor(average) and store it
-    srli t4, t4, 3 # limit /= sizeof(int) * 2 (back to n_points)
-    div t0, t0, t4 # x_tot /= limit
-    div t1, t1, t4 # y_tot /= limit
-_calculateCentroidsK1_store:
-    la t2, centroids
-    # TODO: (2nd delivery) Make stores depend on k instead of constant [0]
-    sw t0, 0(t2) # *centroids = x_tot
-    sw t1, 4(t2) # *(centroids + 4) = y_tot
-
-_calculateCentroidsK1_ret:
-    ret
-;endfunc
-
 ;funcdecl calculateCentroids 0 noinline
+# void calculateCentroids();
+# For each cluster, iterate through it's points and average their coordinates
 calculateCentroids:
+	# s0 <- cluster; s1 <- points; s2 <- centroids; s3 <- clusters; s4 <- x_accum; s5 <- y_accum; s6 <- counter; s7 <- point_idx
+	# t0 <- calcptr; t1 <- tmp
+    #REVIEW: Appears to work for one cluster only
+
+	# cluster = n - 1
+	la s0, k
+	lw s0, 0(s0)
+	addi s0, s0, -1
+
+	# Array pointers
+	la s1, points
+	la s2, centroids
+	la s3, clusters
+
+_calculateCentroids_cluster_iter:
+	mv s4, x0
+	mv s5, x0
+	mv s6, x0
+
+	# point_idx = (n_points - 1) * sizeof(word)
+	la s7, n_points
+	lw s7, 0(s7)
+	addi s7, s7, -1
+	slli s7, s7, 2
+
+_calculateCentroids_point_iter:
+	# if (clusters[point_idx] != cluster) continue;
+	add t0, s3, s7
+	lw t1, 0(t0)
+	bne s0, t1 _calculateCentroids_point_skip
+	# x_accum += points[point_idx].x
+	slli t0, s1, 1
+	add t0, t0, s1
+	lw t1, 0(t0)
+	add s4, s4, t1
+	# y_accum += points[point_idx].y
+	lw t1, 4(t0)
+	add s5, s5, t1
+	# counter++
+	addi s6, s6, 1
+_calculateCentroids_point_skip:
+	# while (point_idx--)
+	addi s7, s7, -4
+	bgez s7, _calculateCentroids_point_iter
+
+_calculateCentroids_cluster_average:
+	# x_accum /= counter; y_accum /= counter (ignore div by 0, pray if you will)
+	div s4, s4, s6
+	div s5, s5, s6
+	# centroids[cluster].x = x_accum; centroids[cluster].y = y_accum
+	slli t0, s0, 3
+	sw s4, 0(t0)
+	sw s5, 4(t0)
+	# while (cluster--)
+	addi s0, s0, -1
+	bgez s0, _calculateCentroids_cluster_iter
+
 _calculateCentroids_ret:
     ret
 ;endfunc
@@ -188,10 +210,12 @@ initializeCentroids:
     mv s0, x0
     la s1, k
     lw s1, 0(s1)
+	slli s1, s1, 2
 
 _initializeCentroids_iter:
     ;funccall rng_step
-    la t0, centroids
+    srli a0, a0, 27
+	la t0, centroids
     add t0, t0, s0
     sw a0, 0(t0)
     addi s0, s0, 4
@@ -238,7 +262,6 @@ _nearestCluster_iter:
     add t2, t2, s3 # calcptr = &centroids[cur_idx]
     lw t0, 0(t2) # tmp_x = *calcptr
     lw t1, 4(t2) # tmp_x = *(calcptr + 4)
-    #REVIEW: function call
     ;funccall manhattanDistance s0 a1 t0 t1
     bgeu a0, s2 _nearestCluster_skip_closest
     mv s2, a0
@@ -258,7 +281,7 @@ mainKMeans:
 
 mainKMeans_iter:
     ;funccall cleanScreen
-    #TODO: Calculate clusters
+    ;funccall calculateClusters
     ;funccall calculateCentroids
     ;funccall printClusters
     ;funccall printCentroids
@@ -272,7 +295,35 @@ _mainKMeans_ret:
 # ===Auxiliar functions===
 # ========================
 
+;funcdecl calculateClusters 0
+# void calculateClusters(destroy, destroy, >destroy, >destroy);
+# Foreach point, set own cluster to the nearest one
+calculateClusters:
+    # s0 <- point_idx; s1 <- points; s2 <- clusters
+	# t0 <- calcptr
+	# points_idx = (n_points - 1) * sizeof(word)
+	la s0, n_points
+	lw s0, 0(s0)
+	addi s0, s0, -1
+	slli s0, s0, 2
 
+	la s1, points
+	la s2, clusters
+
+_calculateClusters_point_iter:
+	slli t0, s0, 1
+	add t0, t0, s1
+	lw a0, 0(t0)
+	lw a1, 4(t0)
+	;funccall nearestCluster a0 a1
+	add t0, s0, s2
+	sw a0, 0(t0)
+	addi s0, s0, -4
+	bgez s0, _calculateClusters_point_iter
+
+_calculateClusters_ret:
+    ret
+;endfunc
 
 # ===Includes===
 ;include draw.s
