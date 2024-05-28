@@ -43,6 +43,7 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
 .text
 
 entry:
+    ;funccall rng_seed
     ;funccall mainKMeans
     
     li a7, 10
@@ -139,7 +140,6 @@ _printCentroids_ret:
 calculateCentroids:
 	# s0 <- cluster; s1 <- points; s2 <- centroids; s3 <- clusters; s4 <- x_accum; s5 <- y_accum; s6 <- counter; s7 <- point_idx
 	# t0 <- calcptr; t1 <- tmp
-    #REVIEW: Appears to work for one cluster only
 
 	# cluster = n - 1
 	la s0, k
@@ -188,8 +188,15 @@ _calculateCentroids_cluster_average:
 	div s5, s5, s6
 	# centroids[cluster].x = x_accum; centroids[cluster].y = y_accum
 	slli t0, s0, 3
+    add t0, t0, s2
 	sw s4, 0(t0)
 	sw s5, 4(t0)
+    ;funccall dbg_int s0
+    ;funccall dbg_spc
+    ;funccall dbg_int s4
+    ;funccall dbg_spc
+    ;funccall dbg_int s5
+    ;funccall dbg_nl
 	# while (cluster--)
 	addi s0, s0, -1
 	bgez s0, _calculateCentroids_cluster_iter
@@ -328,3 +335,4 @@ _calculateClusters_ret:
 # ===Includes===
 ;include draw.s
 ;include rng.s
+;include dbg.s

@@ -39,3 +39,29 @@ dbg_uns:
 	ecall
 	ret
 ;endfunc
+
+;funcdecl dbg_ch 1
+# void dbg_ch(word char, ..., a7=destroy)
+dbg_ch:
+	li a7, 11
+	ecall
+	ret
+;endfunc
+
+;funcdecl dbg_nl 0
+# void dbg_nl(..., a7=destroy)
+dbg_nl:
+	li a7, 11
+	li a0, 10
+	ecall
+	ret
+;endfunc
+
+;funcdecl dbg_spc 0
+# void dbg_spc(..., a7=destroy)
+dbg_spc:
+	li a7, 11
+	li a0, 32
+	ecall
+	ret
+;endfunc

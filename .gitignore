@@ -1,1 +1,2 @@
-src/main.final.s
+src/*.final.s
+src/out.s

@@ -8,7 +8,10 @@ rng_current:
 ;funcdecl rng_seed 0
 # void rng_seed(destroy, destroy); //Set seed to system time
 rng_seed:
-
+	li a7, 30
+	ecall
+	la t0, rng_current
+	sw a0, 0(t0)
 _rng_seed_ret:
 	ret
 ;endfunc
