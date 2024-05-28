@@ -25,19 +25,18 @@ n_points:
     .word 30
 points:
     .word 16, 1, 17, 2, 18, 6, 20, 3, 21, 1, 17, 4, 21, 7, 16, 4, 21, 6, 19, 6, 4, 24, 6, 24, 8, 23, 6, 26, 6, 26, 6, 23, 8, 25, 7, 26, 7, 20, 4, 21, 4, 10, 2, 10, 3, 11, 2, 12, 4, 13, 4, 9, 4, 9, 3, 8, 0, 10, 4, 10
-centroids:
-    .word 0,0, 0,0, 0,0
 k:
-    .word 3
+    .word 3 # Also update clusters, centroids and centroids_prev
 clusters:
     .zero 120 # 30*4
+centroids:
+    .word 0,0, 0,0, 0,0
+centroids_prev:
+    .word -1,-1, -1,-1, -1,-1
 l:
-    .word 10
+    .word 20
 
-# Colors
-#TODO: TMP
-#colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
-colors:      .word 0xff0000, 0x00ff00, 0x0000ff, 0xffff00  #  Colors for each cluster
+colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
 
 .equ         black      0
 .equ         white      0xffffff
@@ -314,9 +313,10 @@ mainKMeans_iter:
     li a0, 300
     ;funccall sleep_ms a0
 
+    ;funccall centroidsChanged
+    beqz a0, _mainKMeans_ret
     addi s0, s0, -1
     bnez s0, mainKMeans_iter
-    #TODO: Stop loop if no change
 
 _mainKMeans_ret:
     ret
@@ -354,6 +354,51 @@ _calculateClusters_point_iter:
 	bgez s0, _calculateClusters_point_iter
 
 _calculateClusters_ret:
+    ret
+;endfunc
+
+;funcdecl centroidsChanged 0
+# bool centroidsChanged();
+centroidsChanged:
+    # t0 <- centroids_ptr; t1 <- prev_ptr; t2 <- limit; t3 <- tmp1, t4 <- tmp2
+    mv a0, x0 # default to false
+    la t0, centroids
+    la t1, centroids_prev
+    la t2, k
+    lw t2, 0(t2)
+    slli t2, t2, 3 # limit = &centroids[k * 2 * sizeof(word)]
+    add t2, t0, t2
+
+_centroidsChanged_iter:
+    lw t3, 0(t0)
+    lw t4, 0(t1)
+    bne t3, t4, _centroidsChanged_true
+    lw t3, 4(t0)
+    lw t4, 4(t1)
+    bne t3, t4, _centroidsChanged_true
+    addi t0, t0, 8
+    addi t1, t1, 8
+    bne t0, t2, _centroidsChanged_iter
+    j _centroidsChanged_false
+
+_centroidsChanged_true:
+    li a0, 1
+_centroidsChanged_false:
+
+_centroidsChanged_update:
+    la t0, centroids
+    la t1, centroids_prev
+
+_centroidsChanged_update_iter:
+    lw t3, 0(t0)
+    sw t3, 0(t1)
+    lw t3, 4(t0)
+    sw t3, 4(t1)
+    addi t0, t0, 8
+    addi t1, t1, 8
+    bne t0, t2, _centroidsChanged_update_iter
+
+_centroidsChanged_ret:
     ret
 ;endfunc
 
