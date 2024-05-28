@@ -1,9 +1,17 @@
 ;sect data
 # PRNG
 rng_current:
-    .word 0x69DEAD69
+    .word 0x69DEAD69 # Default seed if rng_seed is not called
 
 ;sect text
+
+;funcdecl rng_seed 0
+# void rng_seed(destroy, destroy); //Set seed to system time
+rng_seed:
+
+_rng_seed_ret:
+	ret
+;endfunc
 
 ;funcdecl rng_step 0
 # word rng_step(); //xorshift
