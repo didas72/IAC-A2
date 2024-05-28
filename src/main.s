@@ -31,9 +31,13 @@ k:
     .word 3
 clusters:
     .zero 120 # 30*4
+l:
+    .word 10
 
 # Colors
-colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
+#TODO: TMP
+#colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
+colors:      .word 0xff0000, 0x00ff00, 0x0000ff, 0xffff00  #  Colors for each cluster
 
 .equ         black      0
 .equ         white      0xffffff
@@ -126,6 +130,12 @@ _printCentroids_loop:
     lw a0, 0(t0) # sex_pixel.x = *calcptr
     lw a1, 4(t0) # set_pixel.y = *(calcptr + 4)
     # set_pixel.color is already set
+    #TODO: TMP
+    #la t0, colors
+    #add t0, t0, s1 # calcptr = &colors[clust_idx]
+    #addi t0, t0, 4
+    #lw a2, 0(t0) # set_pixel.color = *calcptr
+    #TODO: !TMP
     ;funccall set_pixel a0 a1 a2
     addi s1, s1, 4 # index += 4
     bne s1, s2, _printCentroids_loop # while(index < limit)
@@ -231,44 +241,47 @@ _initializeCentroids_ret:
 manhattanDistance:
     # t0 <- axis_tmp
     sub t0, a2, a0 # axis_tmp = x2 - x1
-    blt t0, x0, _manhattanDistance_x_positive
+    bgtz t0, _manhattanDistance_x_positive
     neg t0, t0 # axis_tmp *= -1
 _manhattanDistance_x_positive:
     mv a0, t0
 
     sub t0, a3, a1 # axis_tmp = y2 - y1
-    blt t0, x0, _manhattanDistance_y_positive
-    neg t0, t0
+    bgtz t0, _manhattanDistance_y_positive
+    neg t0, t0 # axis_tmp *= -1
 _manhattanDistance_y_positive:
     add a0, a0, t0
 
 _manhattanDistance_ret:
+    #;funccall dbg_int a0
+    #;funccall dbg_spc save a0
     ret
 ;endfunc
 
 ;funcdecl nearestCluster 2 noinline
 # word nearestCluster(word x, word y, destroy, destroy);
 nearestCluster:
-    # s0 <- x_backup; s1 <- nearest_idx; s2 <- nearest_dist; s3 <- cur_idx; s4 <- limit
+    # s0 <- x_backup; s1 <- nearest_idx; s2 <- nearest_dist; s3 <- cur_idx; s4 <- limit; s5 <- centroids, s6 <- y_backup
     # t0 <- tmp_x; t1 <- tmp_y; t2 <- calcptr
     mv s0, a0 # Backup x
+    mv s6, a1 # Backup y
     addi s2, x0, -1 # nearest_dist = 0xFFFFFFFF
     mv s3, x0 # cur_idx = 0
     la s4, k
-    lw s4, 0(s4)
-    slli s4, s4, 2 # limit = k * sizeof(word)
+    lw s4, 0(s4) # limit = k
+    la s5, centroids
 
 _nearestCluster_iter:
-    la t2, centroids
-    add t2, t2, s3 # calcptr = &centroids[cur_idx]
+    slli t2, s3, 3 # calcptr = &centroids[cur_idx * 2 * sizeof(word)]
+    add t2, t2, s5
     lw t0, 0(t2) # tmp_x = *calcptr
-    lw t1, 4(t2) # tmp_x = *(calcptr + 4)
-    ;funccall manhattanDistance s0 a1 t0 t1
+    lw t1, 4(t2) # tmp_y = *(calcptr + 4)
+    ;funccall manhattanDistance s0 s6 t0 t1
     bgeu a0, s2 _nearestCluster_skip_closest
-    mv s2, a0
-    srli s1, s3, 2
+    mv s1, s3 # nearest_idx = cur_idx
+    mv s2, a0 # nearest_dist = dist
 _nearestCluster_skip_closest:
-    addi s3, s3, 4
+    addi s3, s3, 1 # cur_idx++
     bne s3, s4, _nearestCluster_iter
 
 _nearestCluster_ret:
@@ -278,7 +291,18 @@ _nearestCluster_ret:
 
 ;funcdecl mainKMeans 0 noinline
 mainKMeans:
+    # s0 <- iter_counter
+    # iter_counter = l
+    la s0, l
+    lw s0, 0(s0)
+
     ;funccall initializeCentroids
+    #TODO: TMP
+    ;funccall cleanScreen
+    ;funccall printCentroids
+    ;funccall printClusters
+    li a0, 750
+    ;funccall sleep_ms a0
 
 mainKMeans_iter:
     ;funccall cleanScreen
@@ -286,7 +310,13 @@ mainKMeans_iter:
     ;funccall calculateCentroids
     ;funccall printClusters
     ;funccall printCentroids
-    #TODO: Loop until no change
+    #TODO: TMP
+    li a0, 300
+    ;funccall sleep_ms a0
+
+    addi s0, s0, -1
+    bnez s0, mainKMeans_iter
+    #TODO: Stop loop if no change
 
 _mainKMeans_ret:
     ret
@@ -314,12 +344,13 @@ calculateClusters:
 _calculateClusters_point_iter:
 	slli t0, s0, 1
 	add t0, t0, s1
-	lw a0, 0(t0)
-	lw a1, 4(t0)
+	lw a0, 0(t0) # a0 = points[point_idx].x
+	lw a1, 4(t0) # a0 = points[point_idx].y
 	;funccall nearestCluster a0 a1
 	add t0, s0, s2
-	sw a0, 0(t0)
+	sw a0, 0(t0) # clusters[point_idx] = a0
 	addi s0, s0, -4
+    #;funccall dbg_hex s0
 	bgez s0, _calculateClusters_point_iter
 
 _calculateClusters_ret:
@@ -330,3 +361,4 @@ _calculateClusters_ret:
 ;include draw.s
 ;include rng.s
 ;include dbg.s
+;include sleep.s
