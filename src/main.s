@@ -168,7 +168,7 @@ _calculateCentroids_point_iter:
 	lw t1, 0(t0)
 	bne s0, t1 _calculateCentroids_point_skip
 	# x_accum += points[point_idx].x
-	slli t0, s1, 1
+	slli t0, s7, 1
 	add t0, t0, s1
 	lw t1, 0(t0)
 	add s4, s4, t1
@@ -184,19 +184,13 @@ _calculateCentroids_point_skip:
 
 _calculateCentroids_cluster_average:
 	# x_accum /= counter; y_accum /= counter (ignore div by 0, pray if you will)
-	div s4, s4, s6
+    div s4, s4, s6
 	div s5, s5, s6
 	# centroids[cluster].x = x_accum; centroids[cluster].y = y_accum
 	slli t0, s0, 3
     add t0, t0, s2
 	sw s4, 0(t0)
 	sw s5, 4(t0)
-    ;funccall dbg_int s0
-    ;funccall dbg_spc
-    ;funccall dbg_int s4
-    ;funccall dbg_spc
-    ;funccall dbg_int s5
-    ;funccall dbg_nl
 	# while (cluster--)
 	addi s0, s0, -1
 	bgez s0, _calculateCentroids_cluster_iter
@@ -217,7 +211,7 @@ initializeCentroids:
     mv s0, x0
     la s1, k
     lw s1, 0(s1)
-	slli s1, s1, 2
+	slli s1, s1, 3
 
 _initializeCentroids_iter:
     ;funccall rng_step

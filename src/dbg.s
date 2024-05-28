@@ -49,7 +49,7 @@ dbg_ch:
 ;endfunc
 
 ;funcdecl dbg_nl 0
-# void dbg_nl(..., a7=destroy)
+# void dbg_nl(destroy, ..., a7=destroy)
 dbg_nl:
 	li a7, 11
 	li a0, 10
@@ -58,7 +58,7 @@ dbg_nl:
 ;endfunc
 
 ;funcdecl dbg_spc 0
-# void dbg_spc(..., a7=destroy)
+# void dbg_spc(destroy, ..., a7=destroy)
 dbg_spc:
 	li a7, 11
 	li a0, 32
