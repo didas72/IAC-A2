@@ -1,19 +1,3 @@
-;sect header
-#
-# IAC 2023/2024 k-means
-# 
-# Grupo: 1
-# Campus: Taguspark
-#
-# Autores:
-# 106196, Diogo Cruz Diniz
-#
-# Tecnico/ULisboa
-
-# LED should be 32x32
-# In all C translation comments, pointers are assumed to be char* or equivalent,
-# pointer scaling is done by hand and ignored in the comments
-
 ;sectord header data text
 ;poison jal jalr
 
@@ -45,6 +29,7 @@ colors:      .word 0xff0000, 0x00ff00, 0x0000ff  #  Colors for each cluster
 ;sect text
 .text
 
+# Entry point, not declared as a function
 entry:
     ;funccall rng_seed
     ;funccall mainKMeans
@@ -58,7 +43,7 @@ entry:
 # ========================================
 
 ;funcdecl cleanScreen 0 noinline
-# void cleanScreen();
+# cleanScreen();
 cleanScreen:
     # t0 <- ptr; t1 <- index; t2 <- calcptr; t3 <- limit; t4 <- white
     la t0, LED_MATRIX_0_BASE
@@ -77,8 +62,7 @@ _cleanScreen_ret:
 ;endfunc
 
 ;funcdecl printClusters 0 noinline
-# void printClusters(destroy, destroy, destroy);
-# Implemented for 2nd delivery already
+# printClusters(destroy, destroy, destroy);
 printClusters:
     # s0 <- clusters; s1 <- index; s2 <- limit; s3 <- colors; s4 <- points
     # t0 <- calcptr; t1 <- clust_idx
@@ -111,7 +95,7 @@ _printClusters_ret:
 ;endfunc
 
 ;funcdecl printCentroids 0 noinline
-# void printCentroids(destroy, destroy, destroy);
+# printCentroids(destroy, destroy, destroy);
 printCentroids:
     # s0 <- centroids; s1 <- index; s2 <- limit
     # t0 <- calcptr
@@ -129,12 +113,6 @@ _printCentroids_loop:
     lw a0, 0(t0) # sex_pixel.x = *calcptr
     lw a1, 4(t0) # set_pixel.y = *(calcptr + 4)
     # set_pixel.color is already set
-    #TODO: TMP
-    #la t0, colors
-    #add t0, t0, s1 # calcptr = &colors[clust_idx]
-    #addi t0, t0, 4
-    #lw a2, 0(t0) # set_pixel.color = *calcptr
-    #TODO: !TMP
     ;funccall set_pixel a0 a1 a2
     addi s1, s1, 4 # index += 4
     bne s1, s2, _printCentroids_loop # while(index < limit)
@@ -144,7 +122,7 @@ _printCentroids_ret:
 ;endfunc
 
 ;funcdecl calculateCentroids 0 noinline
-# void calculateCentroids();
+# calculateCentroids();
 # For each cluster, iterate through it's points and average their coordinates
 calculateCentroids:
 	# s0 <- cluster; s1 <- points; s2 <- centroids; s3 <- clusters; s4 <- x_accum; s5 <- y_accum; s6 <- counter; s7 <- point_idx
@@ -161,6 +139,7 @@ calculateCentroids:
 	la s3, clusters
 
 _calculateCentroids_cluster_iter:
+    # init with 0
 	mv s4, x0
 	mv s5, x0
 	mv s6, x0
@@ -172,7 +151,7 @@ _calculateCentroids_cluster_iter:
 	slli s7, s7, 2
 
 _calculateCentroids_point_iter:
-	# if (clusters[point_idx] != cluster) continue;
+	# iF (clusters[point_idx] != cluster) continue;
 	add t0, s3, s7
 	lw t1, 0(t0)
 	bne s0, t1 _calculateCentroids_point_skip
@@ -202,7 +181,7 @@ _calculateCentroids_cluster_average:
 	sw s4, 0(t0)
 	sw s5, 4(t0)
     j _calculateCentroids_cluster_not_alone
-_calculateCentroids_cluster_alone: //Put clusters that are alone in (0,0)
+_calculateCentroids_cluster_alone: //Put clusters that have no points in (0,0)
     sw x0, 0(t0)
     sw x0, 4(t0)
 _calculateCentroids_cluster_not_alone:
@@ -219,7 +198,8 @@ _calculateCentroids_ret:
 # ========================================
 
 ;funcdecl initializeCentroids 0 noinline
-# void initializeCentroids(destroy);
+# initializeCentroids(destroy);
+# Foreach centroid, initialize it's coordinates with random values
 initializeCentroids:
     # s0 <- cur_idx; s1 <- limit
     # t0 <- calcptr
@@ -230,7 +210,7 @@ initializeCentroids:
 
 _initializeCentroids_iter:
     ;funccall rng_step
-    srli a0, a0, 27
+    srli a0, a0, 27 # only preserve 5 bits (equivalent to %= 32)
 	la t0, centroids
     add t0, t0, s0
     sw a0, 0(t0)
@@ -242,7 +222,7 @@ _initializeCentroids_ret:
 ;endfunc
 
 ;funcdecl manhattanDistance 4 noinline
-# word manhattanDistance(word x1, word y1, word x2, word y2);
+# manhattanDistance(return word x1, word y1, word x2, word y2);
 manhattanDistance:
     # t0 <- axis_tmp
     sub t0, a2, a0 # axis_tmp = x2 - x1
@@ -255,6 +235,7 @@ _manhattanDistance_x_positive:
     bgtz t0, _manhattanDistance_y_positive
     neg t0, t0 # axis_tmp *= -1
 _manhattanDistance_y_positive:
+    # Add x distance to y distance to form total manhattan distance
     add a0, a0, t0
 
 _manhattanDistance_ret:
@@ -262,13 +243,13 @@ _manhattanDistance_ret:
 ;endfunc
 
 ;funcdecl nearestCluster 2 noinline
-# word nearestCluster(word x, word y, destroy, destroy);
+# nearestCluster(return word x, word y, destroy, destroy);
 nearestCluster:
     # s0 <- x_backup; s1 <- nearest_idx; s2 <- nearest_dist; s3 <- cur_idx; s4 <- limit; s5 <- centroids, s6 <- y_backup
     # t0 <- tmp_x; t1 <- tmp_y; t2 <- calcptr
     mv s0, a0 # Backup x
     mv s6, a1 # Backup y
-    addi s2, x0, -1 # nearest_dist = 0xFFFFFFFF
+    addi s2, x0, -1 # nearest_dist = 0xFFFFFFFF (max unsigned value)
     mv s3, x0 # cur_idx = 0
     la s4, k
     lw s4, 0(s4) # limit = k
@@ -288,11 +269,12 @@ _nearestCluster_skip_closest:
     bne s3, s4, _nearestCluster_iter
 
 _nearestCluster_ret:
-    mv a0, s1
+    mv a0, s1 # Store result in return register
     ret
 ;endfunc
 
 ;funcdecl mainKMeans 0 noinline
+# mainKMeans(destroy, destroy, destroy, destroy, ..., a7=destroy);
 mainKMeans:
     # s0 <- iter_counter
     # iter_counter = l
@@ -300,12 +282,6 @@ mainKMeans:
     lw s0, 0(s0)
 
     ;funccall initializeCentroids
-    #TODO: TMP
-    ;funccall cleanScreen
-    ;funccall printCentroids
-    ;funccall printClusters
-    li a0, 750
-    ;funccall sleep_ms a0
 
 mainKMeans_iter:
     ;funccall cleanScreen
@@ -313,10 +289,11 @@ mainKMeans_iter:
     ;funccall calculateCentroids
     ;funccall printClusters
     ;funccall printCentroids
-    #TODO: TMP
+    # This call is explained in the header
     li a0, 300
     ;funccall sleep_ms a0
 
+    # Break the loop if the centroids didn't changed or l iterations reached
     ;funccall centroidsChanged
     beqz a0, _mainKMeans_ret
     addi s0, s0, -1
@@ -331,8 +308,8 @@ _mainKMeans_ret:
 # ========================
 
 ;funcdecl calculateClusters 0
-# void calculateClusters(destroy, destroy, >destroy, >destroy);
-# Foreach point, set own cluster to the nearest one
+# calculateClusters(destroy, destroy, destroy, destroy);
+# Foreach point, set own cluster to the nearest centroid
 calculateClusters:
     # s0 <- point_idx; s1 <- points; s2 <- clusters
 	# t0 <- calcptr
@@ -346,6 +323,7 @@ calculateClusters:
 	la s2, clusters
 
 _calculateClusters_point_iter:
+    # calcptr = &points[point_idx]
 	slli t0, s0, 1
 	add t0, t0, s1
 	lw a0, 0(t0) # a0 = points[point_idx].x
@@ -361,7 +339,7 @@ _calculateClusters_ret:
 ;endfunc
 
 ;funcdecl centroidsChanged 0
-# bool centroidsChanged();
+# centroidsChanged(return bool);
 centroidsChanged:
     # t0 <- centroids_ptr; t1 <- prev_ptr; t2 <- limit; t3 <- tmp1, t4 <- tmp2
     mv a0, x0 # default to false
@@ -373,10 +351,10 @@ centroidsChanged:
     add t2, t0, t2
 
 _centroidsChanged_iter:
-    lw t3, 0(t0)
+    lw t3, 0(t0) # check X coordinate
     lw t4, 0(t1)
     bne t3, t4, _centroidsChanged_true
-    lw t3, 4(t0)
+    lw t3, 4(t0) # check Y coordinate
     lw t4, 4(t1)
     bne t3, t4, _centroidsChanged_true
     addi t0, t0, 8
@@ -385,19 +363,20 @@ _centroidsChanged_iter:
     j _centroidsChanged_false
 
 _centroidsChanged_true:
-    li a0, 1
+    li a0, 1 # set return to true
 _centroidsChanged_false:
 
 _centroidsChanged_update:
     la t0, centroids
     la t1, centroids_prev
+    # limit can be reused
 
 _centroidsChanged_update_iter:
-    lw t3, 0(t0)
+    lw t3, 0(t0) # copy contents of centroids to centroids_prev
     sw t3, 0(t1)
     lw t3, 4(t0)
     sw t3, 4(t1)
-    addi t0, t0, 8
+    addi t0, t0, 8 # advance pointers
     addi t1, t1, 8
     bne t0, t2, _centroidsChanged_update_iter
 
@@ -406,6 +385,7 @@ _centroidsChanged_ret:
 ;endfunc
 
 # ===Includes===
+;include header.s
 ;include draw.s
 ;include rng.s
 ;include dbg.s
