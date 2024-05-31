@@ -578,6 +578,7 @@ set_pixel:
 	sw a2, 0(t0) # store color
 _set_pixel_ret:
 	ret
+	
 #[[FABR]] ;include rng.s
 #[[FABR]] ;sect data
 
@@ -611,6 +612,7 @@ rng_step:
 	sw t0, 0(t1)
 _rng_step_ret:
 	ret
+
 #[[FABR]] ;include dbg.s
 #[[FABR]] ;sect text
 
@@ -671,6 +673,7 @@ dbg_spc:
 	li a0, 32 # ASCII ' '
 	ecall
 	ret
+
 #[[FABR]] ;include sleep.s
 #[[FABR]] ;sect text
 
@@ -697,6 +700,7 @@ _sleep_ms_ret:
 	lw s1, 4(sp)
 	addi sp, sp, 8
 	ret
+
 #[[FABR]] ;sectord header data text
 #[[FABR]] ;poison jal jalr
 
