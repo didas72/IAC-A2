@@ -181,7 +181,7 @@ _calculateCentroids_cluster_average:
 	sw s4, 0(t0)
 	sw s5, 4(t0)
     j _calculateCentroids_cluster_not_alone
-_calculateCentroids_cluster_alone: //Put clusters that have no points in (0,0)
+_calculateCentroids_cluster_alone: #Put clusters that have no points in (0,0)
     sw x0, 0(t0)
     sw x0, 4(t0)
 _calculateCentroids_cluster_not_alone:
