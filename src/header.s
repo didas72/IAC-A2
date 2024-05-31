@@ -21,6 +21,8 @@
 # The output code was cleaned by hand to strip some of the generated comments that cluttered the code.
 # These mostly consisted of commented function code, which is replaced by processed code.
 # Preprocessor directives were preserved. These are mostly unintrusive and help understand how the preprocessor was used.
+# Preprocessor comments start with '[[FABR]]'
+# Some .sect directives may seem out of place, but it is simply a product of how the preprocessor handles includes.
 
 # RIPES:
 # The LED matrix is expected to be 32 by 32.
@@ -82,3 +84,4 @@
 # The simple comparison between the index and zero suffices to determine the stop condition, sparing a register per array traversed.
 #
 # There could have been more consistency with what optimizations where and were not used, which might have made the code less readable.
+
