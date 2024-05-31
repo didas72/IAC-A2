@@ -192,14 +192,20 @@ _calculateCentroids_point_skip:
 	bgez s7, _calculateCentroids_point_iter
 
 _calculateCentroids_cluster_average:
-	# x_accum /= counter; y_accum /= counter (ignore div by 0, pray if you will)
-    div s4, s4, s6
-	div s5, s5, s6
-	# centroids[cluster].x = x_accum; centroids[cluster].y = y_accum
+    # centroids[cluster].x = x_accum; centroids[cluster].y = y_accum
 	slli t0, s0, 3
     add t0, t0, s2
+	beqz s6, _calculateCentroids_cluster_alone
+    # x_accum /= counter; y_accum /= counter (ignore div by 0, pray if you will)
+    div s4, s4, s6
+	div s5, s5, s6
 	sw s4, 0(t0)
 	sw s5, 4(t0)
+    j _calculateCentroids_cluster_not_alone
+_calculateCentroids_cluster_alone: //Put clusters that are alone in (0,0)
+    sw x0, 0(t0)
+    sw x0, 4(t0)
+_calculateCentroids_cluster_not_alone:
 	# while (cluster--)
 	addi s0, s0, -1
 	bgez s0, _calculateCentroids_cluster_iter
@@ -252,8 +258,6 @@ _manhattanDistance_y_positive:
     add a0, a0, t0
 
 _manhattanDistance_ret:
-    #;funccall dbg_int a0
-    #;funccall dbg_spc save a0
     ret
 ;endfunc
 
@@ -350,7 +354,6 @@ _calculateClusters_point_iter:
 	add t0, s0, s2
 	sw a0, 0(t0) # clusters[point_idx] = a0
 	addi s0, s0, -4
-    #;funccall dbg_hex s0
 	bgez s0, _calculateClusters_point_iter
 
 _calculateClusters_ret:
